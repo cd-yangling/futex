@@ -45,7 +45,7 @@ typedef struct task_s
 	 *	2:	挂接在 空闲 队列上
 	 *	3:	悬空
 	 */
-	struct list_head	tsk_list;
+	struct list_head		tsk_list;
 	
 	/**
 	 *	tsk_heap
@@ -124,6 +124,7 @@ static struct futex_module
 }_static_futex_mod;
 
 static	DWORD				_static_tls_index;
+static	volatile	HANDLE	_static_named_mtx;
 
 /**
  *	libfutex_panic - 惊恐
@@ -318,7 +319,12 @@ static task_t * who_am_i(void)
 	}
 }
 
-always_inline DWORD
+/**
+ *	this function code is
+ *	copy from pthread.2 redhat
+ *	https://www.sourceware.org/pthreads-win32/
+ */
+always_inline static DWORD
 calc_relmillisecs(const struct timespec * abstime)
 {
 	const __int64 NANOSEC_PER_MILLISEC = 1000000;
@@ -514,6 +520,11 @@ static futex_t * futex_acquire(int * addr)
 	futex = futex_idle_new();
 	if(NULL == futex)
 		futex = futex_heap_new();
+
+#ifdef ENABLE_BUG_VERIFY
+	if(!list_empty(&(futex->ftx_list)))
+		libfutex_panic();
+#endif
 
 	if(NULL != futex)
 	{
@@ -1012,6 +1023,14 @@ static void do_futex_module_init(void)
  */
 static BOOL do_process_attach(void)
 {
+	char	name[MAX_PATH];
+
+	sprintf(name, "Global\\YANGLING_20150512_"
+		"LIBFUTEX_%ld", GetCurrentProcessId());
+	_static_named_mtx = CreateMutex(NULL, TRUE, name);
+	if(ERROR_ALREADY_EXISTS == GetLastError())
+		return FALSE;
+
 	do_task_module_init();
 	do_futex_module_init();
 
@@ -1071,14 +1090,17 @@ BOOL WINAPI DllMain(
 					DWORD		fdwReason,
 					LPVOID		lpvReserved)
 {
-	BOOL result = TRUE;
+	BOOL result;
 
 	switch(fdwReason)
 	{
 	case DLL_PROCESS_ATTACH:
 		// Initialize once for each new process.
 		// Return FALSE to fail DLL load.
-		result = do_process_attach();
+		if(NULL != lpvReserved)
+			result = do_process_attach();
+		else
+			result = FALSE;	/*	disable dynamic load*/
 		break;
 
 	case DLL_THREAD_ATTACH:
