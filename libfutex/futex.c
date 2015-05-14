@@ -951,20 +951,6 @@ LIBFUTEX_API int futex(
 	return result;
 }
 
-LIBFUTEX_API void xxxx(void)
-{
-	task_t * task1, *task2;
-	task1 = task_acquire();
-	task2 = task_acquire();
-	
-	task_release(task2);
-	task_release(task1);
-	
-	task1 = task_acquire();
-	task2 = task_acquire();
-	
-}
-
 /**
  *	do_task_module_init - task Ä£¿é³õÊ¼»¯
  */
