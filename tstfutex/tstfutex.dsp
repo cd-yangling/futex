@@ -87,6 +87,14 @@ LINK32=link.exe
 
 SOURCE=.\tstfutex.c
 # End Source File
+# Begin Source File
+
+SOURCE=.\tstmutex.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\tstrwlck.c
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
