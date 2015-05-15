@@ -730,14 +730,23 @@ static int futex_wait_slow(
 		futex_lock(futex);
 		if(result == E_FUTEX_TIMEOUT && list_empty(list))
 		{
+			/**
+			 *	in timeout & list empty case
+			 *	we *MUST* forget about our 
+			 *	timeout, or we'd have missed
+			 *	signal. empty list indicates
+			 *	has been removed from wait list
+			 *	call task_sched again with NULL
+			 */
 			rewait = 1;
 		}
 		list_del_init(list);
 		futex_unlock(futex);
 
 		/**
-		 *	其它线程已经唤醒了自己再次进入等待
-		 *	以便保持 self->task_evt 信号一致性
+		 *	another thread woken me.i just
+		 *	missed signal.so i *MUST* call
+		 *	task_sched again with NULL.
 		 */
 		if(rewait)
 			result = task_sched(self, NULL);
